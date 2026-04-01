@@ -111,92 +111,77 @@ class EnergyImageGenerator:
         
         # Versuche Energy Dashboard Konfiguration zu laden
         try:
-            from homeassistant.components.energy import data
+            # Importiere Energy Component
+            from homeassistant.components.energy.data import async_get_manager
             
-            energy_manager = data.async_get_manager(self.hass)
-            if energy_manager:
-                energy_prefs = await energy_manager.async_get_preferences()
-                _LOGGER.debug("Energy Dashboard preferences loaded")
+            energy_manager = await async_get_manager(self.hass)
+            if not energy_manager:
+                _LOGGER.warning("Energy Manager not available")
+                return energy_data
                 
-                # Solar Production
-                if energy_prefs.get("energy_sources"):
-                    for source in energy_prefs["energy_sources"]:
-                        if source.get("type") == "solar":
-                            stat_id = source.get("stat_energy_from")
-                            if stat_id:
-                                _LOGGER.debug("Found solar stat_id: %s", stat_id)
-                                stats = await self.hass.async_add_executor_job(
-                                    statistics_during_period,
-                                    self.hass,
-                                    start_time,
-                                    end_time,
-                                    {stat_id},
-                                    "hour",
-                                    None,
-                                    {"sum"},
-                                )
-                                if stats and stat_id in stats:
-                                    stat_list = stats[stat_id]
-                                    if stat_list:
-                                        energy_data["pv_production"] = stat_list[-1].get("sum", 0.0)
-                                        _LOGGER.info("PV Production: %.2f kWh", energy_data["pv_production"])
+            energy_prefs = await energy_manager.async_get_preferences()
+            if not energy_prefs:
+                _LOGGER.warning("Energy Dashboard not configured")
+                return energy_data
                 
-                # Grid Import/Export
-                if energy_prefs.get("energy_sources"):
-                    for source in energy_prefs["energy_sources"]:
-                        if source.get("type") == "grid":
-                            for flow in source.get("flow_from", []):
-                                stat_id = flow.get("stat_energy_from")
-                                if stat_id:
-                                    _LOGGER.debug("Found grid import stat_id: %s", stat_id)
-                                    stats = await self.hass.async_add_executor_job(
-                                        statistics_during_period,
-                                        self.hass,
-                                        start_time,
-                                        end_time,
-                                        {stat_id},
-                                        "hour",
-                                        None,
-                                        {"sum"},
-                                    )
-                                    if stats and stat_id in stats:
-                                        stat_list = stats[stat_id]
-                                        if stat_list:
-                                            energy_data["grid_import"] = stat_list[-1].get("sum", 0.0)
-                                            _LOGGER.info("Grid Import: %.2f kWh", energy_data["grid_import"])
-                            
-                            for flow in source.get("flow_to", []):
-                                stat_id = flow.get("stat_energy_to")
-                                if stat_id:
-                                    _LOGGER.debug("Found grid export stat_id: %s", stat_id)
-                                    stats = await self.hass.async_add_executor_job(
-                                        statistics_during_period,
-                                        self.hass,
-                                        start_time,
-                                        end_time,
-                                        {stat_id},
-                                        "hour",
-                                        None,
-                                        {"sum"},
-                                    )
-                                    if stats and stat_id in stats:
-                                        stat_list = stats[stat_id]
-                                        if stat_list:
-                                            energy_data["grid_export"] = stat_list[-1].get("sum", 0.0)
-                                            _LOGGER.info("Grid Export: %.2f kWh", energy_data["grid_export"])
+            _LOGGER.debug("Energy Dashboard preferences loaded: %s", energy_prefs)
                 
-                # Consumption berechnen
-                energy_data["consumption"] = (
-                    energy_data["pv_production"] + 
-                    energy_data["grid_import"] - 
-                    energy_data["grid_export"]
-                )
-                _LOGGER.info("Total Consumption: %.2f kWh", energy_data["consumption"])
-            else:
-                _LOGGER.warning("Energy Manager not found - Energy Dashboard may not be configured")
+            # Solar Production
+            energy_sources = energy_prefs.get("energy_sources", [])
+            _LOGGER.debug("Found %d energy sources", len(energy_sources))
+            
+            for source in energy_sources:
+                source_type = source.get("type")
+                _LOGGER.debug("Processing source type: %s", source_type)
                 
+                if source_type == "solar":
+                    stat_id = source.get("stat_energy_from")
+                    if stat_id:
+                        _LOGGER.info("Found solar sensor: %s", stat_id)
+                        value = await self._get_statistic_sum(
+                            stat_id, start_time, end_time, statistics_during_period
+                        )
+                        if value is not None:
+                            energy_data["pv_production"] = value
+                            _LOGGER.info("PV Production: %.2f kWh", value)
+                
+                elif source_type == "grid":
+                    # Grid Import
+                    for flow in source.get("flow_from", []):
+                        stat_id = flow.get("stat_energy_from")
+                        if stat_id:
+                            _LOGGER.info("Found grid import sensor: %s", stat_id)
+                            value = await self._get_statistic_sum(
+                                stat_id, start_time, end_time, statistics_during_period
+                            )
+                            if value is not None:
+                                energy_data["grid_import"] += value
+                                _LOGGER.info("Grid Import: %.2f kWh", value)
+                    
+                    # Grid Export
+                    for flow in source.get("flow_to", []):
+                        stat_id = flow.get("stat_energy_to")
+                        if stat_id:
+                            _LOGGER.info("Found grid export sensor: %s", stat_id)
+                            value = await self._get_statistic_sum(
+                                stat_id, start_time, end_time, statistics_during_period
+                            )
+                            if value is not None:
+                                energy_data["grid_export"] += value
+                                _LOGGER.info("Grid Export: %.2f kWh", value)
+                
+            # Consumption berechnen
+            energy_data["consumption"] = (
+                energy_data["pv_production"] + 
+                energy_data["grid_import"] - 
+                energy_data["grid_export"]
+            )
+            _LOGGER.info("Total Consumption: %.2f kWh", energy_data["consumption"])
+                
+        except ImportError:
+            _LOGGER.error("Energy component not available - please configure Energy Dashboard")
         except Exception as err:
-            _LOGGER.error("Error loading energy dashboard data: %s", err)
+            _LOGGER.error("Error loading energy dashboard data: %s", err, exc_info=True)
         
         # Device-spezifische Daten
         if devices:
@@ -211,6 +196,46 @@ class EnergyImageGenerator:
                         _LOGGER.warning("Could not convert state for %s", device_entity)
         
         return energy_data
+
+    async def _get_statistic_sum(
+        self,
+        stat_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        statistics_during_period,
+    ) -> float | None:
+        """Get the sum of a statistic for a given period."""
+        try:
+            stats = await self.hass.async_add_executor_job(
+                statistics_during_period,
+                self.hass,
+                start_time,
+                end_time,
+                {stat_id},
+                "hour",
+                None,
+                {"sum"},
+            )
+            
+            if stats and stat_id in stats:
+                stat_list = stats[stat_id]
+                if stat_list and len(stat_list) > 0:
+                    # Berechne Differenz zwischen letztem und erstem Wert
+                    first_sum = stat_list[0].get("sum", 0.0) or 0.0
+                    last_sum = stat_list[-1].get("sum", 0.0) or 0.0
+                    diff = last_sum - first_sum
+                    _LOGGER.debug(
+                        "Statistic %s: first=%.2f, last=%.2f, diff=%.2f",
+                        stat_id, first_sum, last_sum, diff
+                    )
+                    return diff
+            
+            _LOGGER.warning("No statistics found for %s", stat_id)
+            return None
+            
+        except Exception as err:
+            _LOGGER.error("Error fetching statistic %s: %s", stat_id, err)
+            return None
 
     def _get_period_title(self, period: str) -> str:
         """Get the title for the period."""

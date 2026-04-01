@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.4.2] - 2026-04-01
+
+### Fixed
+- 🐛 **Robuste Energy Dashboard Integration**: Korrekte Verwendung von `async_get_manager()`
+- ✅ **Statistik-Berechnung korrigiert**: Differenz zwischen erstem und letztem Wert wird berechnet
+- 🔍 **Ausführliches Logging**: Zeigt alle gefundenen Sensoren und berechnete Werte
+- 🛡️ **Besseres Error Handling**: ImportError und Exception werden separat behandelt
+
+### Changed
+- 📊 Neue Hilfsmethode `_get_statistic_sum()` für saubere Statistik-Abfragen
+- 🔧 Unterstützt mehrere Grid Import/Export Flows (werden addiert)
+- 📝 Debug-Logs zeigen Energy Dashboard Preferences komplett
+
+### Technical
+- Import: `from homeassistant.components.energy.data import async_get_manager`
+- API: `energy_manager = await async_get_manager(hass)` (await hinzugefügt!)
+- Statistik: Berechnet Differenz zwischen `first_sum` und `last_sum`
+- Logging: `exc_info=True` für vollständige Stacktraces
+
 ## [1.4.1] - 2026-04-01
 
 ### Fixed
