@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.3.0] - 2026-04-01
+
+### Changed
+- 🔥 **Fallback-Modus entfernt**: Nur noch Template-basierte Bildgenerierung
+- ✅ **Keine Duplikation mehr**: Alle Grafik-Logik in `template_renderer.py`
+- 🎨 **Konsistentes Design**: Immer das professionelle 3D-Template
+- 📦 **Kleinere Dependencies**: matplotlib nicht mehr benötigt
+
+### Removed
+- ❌ `use_template` Parameter aus `generate_story_image()`
+- ❌ `_draw_stat_card()` und alle Icon-Zeichnungs-Methoden
+- ❌ `_create_chart()` Methode
+- ❌ matplotlib Dependency
+- ❌ Alte Fallback-Bildgenerierung (Zeilen 59-430)
+
+### Technical
+- Code reduziert von ~530 auf ~90 Zeilen
+- Nur noch `_fetch_energy_data()` und `_get_period_title()` in `image_generator.py`
+- Alle Rendering-Logik in `template_renderer.py`
+
+## [1.2.1] - 2026-04-01
+
+### Fixed
+- 🐛 **Font-Konsistenz**: Fallback-Bildgenerierung nutzt jetzt auch Pillow's embedded font
+- ✅ Gleiche Font-Fallback-Logik in `image_generator.py` und `template_renderer.py`
+- 🔧 Schriftgröße jetzt konsistent in beiden Modi (Template und Fallback)
+
 ## [1.2.0] - 2026-04-01
 
 ### Added
