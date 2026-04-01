@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Energy Post",
+        "description": "Configure your Energy Post integration",
+        "data": {
+          "name": "Name",
+          "update_interval": "Update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_name": "Name must be at least 3 characters long",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This integration has already been configured"
+    }
+  },
+  "services": {
+    "generate_image": {
+      "name": "Generate Energy Image",
+      "description": "Creates an Instagram story-ready image with energy statistics",
+      "fields": {
+        "period": {
+          "name": "Period",
+          "description": "The time period for the statistics"
+        },
+        "devices": {
+          "name": "Devices",
+          "description": "List of device entities to display"
+        },
+        "title": {
+          "name": "Title",
+          "description": "Custom title for the image"
+        },
+        "filename": {
+          "name": "Filename",
+          "description": "Name of the image file to save"
+        }
+      }
+    }
+  }
+}

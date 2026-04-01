@@ -1,0 +1,139 @@
+# Beispiel-Automationen für Energy Post
+
+# 1. Tägliches Energie-Bild um 20 Uhr
+- alias: "Tägliches Energie-Bild"
+  description: "Erstellt jeden Abend um 20 Uhr ein Energie-Bild"
+  trigger:
+    - platform: time
+      at: "20:00:00"
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: day
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+          - sensor.waschmaschine_energy
+        filename: energie_{{ now().strftime('%Y%m%d') }}.png
+
+# 2. Wöchentliches Energie-Bild (Sonntags)
+- alias: "Wöchentliches Energie-Bild"
+  description: "Erstellt jeden Sonntag ein Wochen-Energie-Bild"
+  trigger:
+    - platform: time
+      at: "18:00:00"
+  condition:
+    - condition: time
+      weekday:
+        - sun
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: week
+        title: "Energie diese Woche"
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+        filename: energie_woche.png
+
+# 3. Monatliches Energie-Bild (am 1. des Monats)
+- alias: "Monatliches Energie-Bild"
+  description: "Erstellt am 1. jeden Monats ein Monats-Energie-Bild"
+  trigger:
+    - platform: time
+      at: "09:00:00"
+  condition:
+    - condition: template
+      value_template: "{{ now().day == 1 }}"
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: month
+        title: "Energie letzter Monat"
+        filename: energie_monat_{{ now().strftime('%Y%m') }}.png
+
+# 4. Energie-Bild mit Telegram-Benachrichtigung
+- alias: "Energie-Bild per Telegram"
+  description: "Sendet das Energie-Bild per Telegram"
+  trigger:
+    - platform: time
+      at: "20:00:00"
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: day
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+        filename: energie_heute.png
+    - delay: "00:00:05"
+    - service: notify.telegram
+      data:
+        message: "📊 Deine Energie-Statistik für heute"
+        data:
+          photo:
+            - url: "http://YOUR_HA_URL:8123/local/energie_heute.png"
+              caption: "Energie-Übersicht {{ now().strftime('%d.%m.%Y') }}"
+
+# 5. Energie-Bild bei hohem PV-Ertrag
+- alias: "Energie-Bild bei hohem PV-Ertrag"
+  description: "Erstellt ein Bild wenn der PV-Ertrag über 30 kWh liegt"
+  trigger:
+    - platform: time
+      at: "19:00:00"
+  condition:
+    - condition: numeric_state
+      entity_id: sensor.solar_production
+      above: 30
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: day
+        title: "🌞 Toller PV-Tag!"
+        filename: pv_rekord.png
+    - service: notify.mobile_app_YOUR_PHONE
+      data:
+        message: "Heute gab es einen tollen PV-Ertrag!"
+        data:
+          image: "/local/pv_rekord.png"
+
+# 6. Energie-Bild auf Knopfdruck (Button Helper)
+- alias: "Energie-Bild auf Abruf"
+  description: "Erstellt ein Energie-Bild wenn ein Button gedrückt wird"
+  trigger:
+    - platform: state
+      entity_id: input_button.energie_bild_erstellen
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: day
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+          - sensor.waschmaschine_energy
+          - sensor.trockner_energy
+        filename: energie_auf_abruf.png
+    - service: persistent_notification.create
+      data:
+        title: "Energie-Bild erstellt"
+        message: "Das Bild wurde unter /local/energie_auf_abruf.png gespeichert"
+
+# 7. Wochenend-Vergleich
+- alias: "Wochenend Energie-Vergleich"
+  description: "Erstellt Sonntag Abend einen Wochenend-Vergleich"
+  trigger:
+    - platform: time
+      at: "20:00:00"
+  condition:
+    - condition: time
+      weekday:
+        - sun
+  action:
+    - service: energy_post.generate_image
+      data:
+        period: week
+        title: "Wochenend-Energie"
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.sauna_energy
+        filename: wochenende.png

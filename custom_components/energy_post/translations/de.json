@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Energy Post einrichten",
+        "description": "Konfigurieren Sie Ihre Energy Post Integration",
+        "data": {
+          "name": "Name",
+          "update_interval": "Update-Intervall (Sekunden)"
+        }
+      }
+    },
+    "error": {
+      "invalid_name": "Der Name muss mindestens 3 Zeichen lang sein",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten"
+    },
+    "abort": {
+      "already_configured": "Diese Integration wurde bereits konfiguriert"
+    }
+  },
+  "services": {
+    "generate_image": {
+      "name": "Energie-Bild generieren",
+      "description": "Erstellt ein Instagram-Story-taugliches Bild mit Energie-Statistiken",
+      "fields": {
+        "period": {
+          "name": "Zeitraum",
+          "description": "Der Zeitraum für die Statistik"
+        },
+        "devices": {
+          "name": "Geräte",
+          "description": "Liste der Geräte-Entities, die angezeigt werden sollen"
+        },
+        "title": {
+          "name": "Titel",
+          "description": "Benutzerdefinierter Titel für das Bild"
+        },
+        "filename": {
+          "name": "Dateiname",
+          "description": "Name der zu speichernden Bilddatei"
+        }
+      }
+    }
+  }
+}

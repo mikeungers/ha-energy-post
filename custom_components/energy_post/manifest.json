@@ -1,0 +1,17 @@
+{
+  "domain": "energy_post",
+  "name": "Energy Post",
+  "codeowners": [
+    "@yourusername"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/yourusername/ha-energy-post",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/yourusername/ha-energy-post/issues",
+  "requirements": [
+    "pillow==10.2.0",
+    "matplotlib==3.8.2"
+  ],
+  "version": "1.0.0"
+}

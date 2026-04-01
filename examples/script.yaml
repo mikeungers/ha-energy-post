@@ -1,0 +1,125 @@
+# Beispiel-Scripts für Energy Post
+
+# Script: Energie-Bild für Instagram Story erstellen
+energie_story_erstellen:
+  alias: "Energie Story erstellen"
+  description: "Erstellt ein Instagram-Story-Bild mit Energie-Statistiken"
+  sequence:
+    - service: energy_post.generate_image
+      data:
+        period: day
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+        title: "Meine Energie heute ⚡"
+        filename: instagram_story.png
+    - service: persistent_notification.create
+      data:
+        title: "✅ Story-Bild erstellt"
+        message: >
+          Dein Instagram Story-Bild wurde erstellt!
+          
+          📁 Speicherort: /local/instagram_story.png
+          🔗 URL: {{ states.sensor.base_url.state }}/local/instagram_story.png
+          
+          Jetzt kannst du es herunterladen und in deiner Story posten!
+
+# Script: Wöchentlicher Energie-Report
+woechentlicher_energie_report:
+  alias: "Wöchentlicher Energie-Report"
+  description: "Erstellt einen wöchentlichen Energie-Report mit allen Details"
+  sequence:
+    - service: energy_post.generate_image
+      data:
+        period: week
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+          - sensor.waschmaschine_energy
+          - sensor.trockner_energy
+          - sensor.geschirrspuler_energy
+        title: "Wöchentlicher Energie-Report"
+        filename: weekly_report.png
+    - delay: "00:00:03"
+    - service: notify.telegram
+      data:
+        message: "📊 Dein wöchentlicher Energie-Report ist fertig!"
+        data:
+          photo:
+            - url: "{{ states.sensor.base_url.state }}/local/weekly_report.png"
+
+# Script: Monatlicher Energie-Vergleich
+monatlicher_vergleich:
+  alias: "Monatlicher Energie-Vergleich"
+  description: "Erstellt einen monatlichen Energie-Vergleich"
+  sequence:
+    - service: energy_post.generate_image
+      data:
+        period: month
+        title: "Energie im {{ now().strftime('%B') }}"
+        filename: monthly_{{ now().strftime('%Y_%m') }}.png
+    - service: persistent_notification.create
+      data:
+        title: "Monatsbericht erstellt"
+        message: "Dein Energie-Bericht für {{ now().strftime('%B %Y') }} wurde erstellt."
+
+# Script: Energie-Bild mit Custom Geräten
+custom_energie_bild:
+  alias: "Custom Energie-Bild"
+  description: "Erstellt ein Energie-Bild mit benutzerdefinierten Geräten"
+  fields:
+    zeitraum:
+      description: "Zeitraum (day/week/month)"
+      example: "day"
+      selector:
+        select:
+          options:
+            - day
+            - week
+            - month
+    titel:
+      description: "Titel für das Bild"
+      example: "Meine Energie"
+      selector:
+        text:
+    geraete:
+      description: "Liste der Geräte-Sensoren"
+      example: "sensor.warmepumpe_energy,sensor.wallbox_energy"
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: sensor
+              device_class: energy
+  sequence:
+    - service: energy_post.generate_image
+      data:
+        period: "{{ zeitraum }}"
+        title: "{{ titel }}"
+        devices: "{{ geraete }}"
+        filename: "custom_{{ now().strftime('%Y%m%d_%H%M%S') }}.png"
+    - service: persistent_notification.create
+      data:
+        title: "Bild erstellt"
+        message: "Dein Custom Energie-Bild wurde erstellt!"
+
+# Script: Energie-Bild für Social Media (mit mehreren Formaten)
+social_media_post:
+  alias: "Social Media Energie-Post"
+  description: "Erstellt Energie-Bilder für verschiedene Social Media Plattformen"
+  sequence:
+    - service: energy_post.generate_image
+      data:
+        period: day
+        title: "Energie heute 🌞"
+        devices:
+          - sensor.warmepumpe_energy
+          - sensor.wallbox_energy
+        filename: instagram_story.png
+    - service: persistent_notification.create
+      data:
+        title: "📱 Social Media Bilder erstellt"
+        message: >
+          Instagram Story: /local/instagram_story.png (1080x1920)
+          
+          Lade das Bild herunter und teile deine Energie-Erfolge! 🎉

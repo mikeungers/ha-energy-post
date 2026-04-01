@@ -1,0 +1,42 @@
+generate_image:
+  name: Energie-Bild generieren
+  description: Erstellt ein Instagram-Story-taugliches Bild mit Energie-Statistiken
+  fields:
+    period:
+      name: Zeitraum
+      description: Der Zeitraum für die Statistik
+      required: false
+      default: day
+      selector:
+        select:
+          options:
+            - label: Heute
+              value: day
+            - label: Diese Woche
+              value: week
+            - label: Dieser Monat
+              value: month
+    devices:
+      name: Geräte
+      description: Liste der Geräte-Entities, die angezeigt werden sollen
+      required: false
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: sensor
+              device_class: energy
+    title:
+      name: Titel
+      description: Benutzerdefinierter Titel für das Bild
+      required: false
+      selector:
+        text:
+    filename:
+      name: Dateiname
+      description: Name der zu speichernden Bilddatei (im www Ordner)
+      required: false
+      default: energy_stats.png
+      selector:
+        text:

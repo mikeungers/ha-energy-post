@@ -1,0 +1,166 @@
+# Beispiel Lovelace-Karten für Energy Post
+
+# 1. Button-Karte zum Erstellen eines Energie-Bildes
+type: button
+name: Energie-Bild erstellen
+icon: mdi:image-plus
+tap_action:
+  action: call-service
+  service: energy_post.generate_image
+  service_data:
+    period: day
+    devices:
+      - sensor.warmepumpe_energy
+      - sensor.wallbox_energy
+    filename: energie_heute.png
+
+# 2. Entities-Karte mit mehreren Optionen
+type: entities
+title: Energy Post
+entities:
+  - type: button
+    name: Heute
+    icon: mdi:calendar-today
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: day
+        filename: energie_heute.png
+  - type: button
+    name: Diese Woche
+    icon: mdi:calendar-week
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: week
+        filename: energie_woche.png
+  - type: button
+    name: Dieser Monat
+    icon: mdi:calendar-month
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: month
+        filename: energie_monat.png
+
+# 3. Horizontal Stack mit Buttons
+type: horizontal-stack
+cards:
+  - type: button
+    name: Tag
+    icon: mdi:weather-sunny
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: day
+  - type: button
+    name: Woche
+    icon: mdi:calendar-week
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: week
+  - type: button
+    name: Monat
+    icon: mdi:calendar-month
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: month
+
+# 4. Picture-Karte mit letztem generierten Bild
+type: picture
+image: /local/energie_heute.png
+tap_action:
+  action: call-service
+  service: energy_post.generate_image
+  service_data:
+    period: day
+    filename: energie_heute.png
+
+# 5. Markdown-Karte mit Anleitung
+type: markdown
+content: |
+  ## 📊 Energie-Bild erstellen
+  
+  Klicke auf einen der Buttons um ein Energie-Bild zu erstellen:
+  
+  - **Tag**: Energie-Statistik für heute
+  - **Woche**: Energie-Statistik für diese Woche
+  - **Monat**: Energie-Statistik für diesen Monat
+  
+  Das Bild wird im `/local/` Ordner gespeichert und kann
+  für Instagram Stories verwendet werden (1080x1920 Format).
+
+# 6. Conditional Card - zeigt Bild nur wenn vorhanden
+type: conditional
+conditions:
+  - entity: sensor.energy_post_power
+    state_not: unavailable
+card:
+  type: vertical-stack
+  cards:
+    - type: button
+      name: Instagram Story erstellen
+      icon: mdi:instagram
+      tap_action:
+        action: call-service
+        service: energy_post.generate_image
+        service_data:
+          period: day
+          title: "Meine Energie heute ⚡"
+          devices:
+            - sensor.warmepumpe_energy
+            - sensor.wallbox_energy
+          filename: instagram_story.png
+    - type: picture
+      image: /local/instagram_story.png
+      tap_action:
+        action: url
+        url_path: /local/instagram_story.png
+
+# 7. Grid Card mit allen Optionen
+type: grid
+columns: 2
+square: false
+cards:
+  - type: button
+    name: Heute
+    icon: mdi:calendar-today
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: day
+  - type: button
+    name: Woche
+    icon: mdi:calendar-week
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: week
+  - type: button
+    name: Monat
+    icon: mdi:calendar-month
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: month
+  - type: button
+    name: Instagram
+    icon: mdi:instagram
+    tap_action:
+      action: call-service
+      service: energy_post.generate_image
+      service_data:
+        period: day
+        title: "⚡ Energie"
+        filename: story.png
