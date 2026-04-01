@@ -59,3 +59,4 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
+test_template_result.png

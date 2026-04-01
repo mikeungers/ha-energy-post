@@ -6,12 +6,12 @@ Eine Home Assistant Integration zum Erstellen von Instagram-Story-tauglichen Bil
 
 ## ✨ Features
 
-- 📸 **Instagram Story Format**: Generiert Bilder im perfekten 1080x1920 Format
+- 📸 **Instagram Story Format**: Generiert Bilder im perfekten Format für Social Media
+- 🏠 **3D Hausvisualisierung**: Professionelles Template mit Haus, PV-Modulen, E-Auto, Wärmepumpe
 - 📊 **Energy Dashboard Integration**: Nutzt Daten aus dem HA Energy Dashboard
 - ⚡ **Umfassende Statistiken**: PV-Ertrag, Netzbezug, Einspeisung, Gesamtverbrauch
-- 🔌 **Geräte-Tracking**: Zeigt Verbrauch einzelner Geräte (z.B. Wärmepumpe)
-- 🎨 **Modernes Design**: Dunkles Theme mit farbigen Akzenten
-- 📈 **Zeitreihen-Diagramme**: Visualisierung der Energieflüsse über Zeit
+- 🔌 **Geräte-Tracking**: Zeigt Verbrauch einzelner Geräte (z.B. Wärmepumpe, Wallbox)
+- 🎨 **Professionelles Design**: Hochwertige 3D-Visualisierung mit Werte-Overlays
 - 🌐 **Mehrsprachig**: Deutsch & Englisch
 
 ## Installation

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import io
 import logging
+import os
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
@@ -15,6 +16,8 @@ from matplotlib.patches import Rectangle
 
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+
+from .template_renderer import TemplateRenderer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,10 +47,14 @@ class EnergyImageGenerator:
         period: str = "day",
         devices: list[str] | None = None,
         title: str | None = None,
+        use_template: bool = True,
     ) -> bytes:
         """Generate an Instagram story image with energy statistics."""
         
         energy_data = await self._fetch_energy_data(period, devices)
+        
+        if use_template:
+            return await self._generate_template_image(energy_data, period, title, devices)
         
         img = Image.new('RGB', INSTAGRAM_STORY_SIZE, BACKGROUND_COLOR)
         draw = ImageDraw.Draw(img)
@@ -157,6 +164,27 @@ class EnergyImageGenerator:
         
         return img_bytes.getvalue()
 
+    async def _generate_template_image(
+        self,
+        energy_data: dict[str, Any],
+        period: str,
+        title: str | None,
+        devices: list[str] | None,
+    ) -> bytes:
+        """Generate image using template overlay."""
+        template_path = os.path.join(os.path.dirname(__file__), "template_post.png")
+        
+        if not os.path.exists(template_path):
+            _LOGGER.warning("Template not found, falling back to generated image")
+            return await self.generate_story_image(period, devices, title, use_template=False)
+        
+        if title is None:
+            title = self._get_period_title(period)
+        
+        # Nutze TemplateRenderer für die Grafik-Logik (keine HA-Dependencies)
+        renderer = TemplateRenderer(template_path)
+        return renderer.render_energy_data(energy_data, title)
+
     def _draw_stat_card(
         self,
         draw: ImageDraw.ImageDraw,
@@ -180,6 +208,10 @@ class EnergyImageGenerator:
             outline=color,
             width=3
         )
+        
+        icon_x = x + 30
+        icon_y = y + 20
+        self._draw_icon_for_label(draw, label, icon_x, icon_y, color)
         
         bbox = draw.textbbox((0, 0), label, font=label_font)
         text_width = bbox[2] - bbox[0]
@@ -212,6 +244,117 @@ class EnergyImageGenerator:
             fill="#aaaaaa",
             font=unit_font
         )
+
+    def _draw_icon_for_label(self, draw: ImageDraw.ImageDraw, label: str, x: int, y: int, color: str) -> None:
+        """Draw an icon based on the label."""
+        label_lower = label.lower()
+        
+        if "pv" in label_lower or "solar" in label_lower or "ertrag" in label_lower:
+            self._draw_solar_icon(draw, x, y, color)
+        elif "netzbezug" in label_lower or "import" in label_lower or "grid" in label_lower and "import" in label_lower:
+            self._draw_power_pole_icon(draw, x, y, color)
+        elif "einspeisung" in label_lower or "export" in label_lower:
+            self._draw_export_icon(draw, x, y, color)
+        elif "verbrauch" in label_lower or "consumption" in label_lower:
+            self._draw_home_icon(draw, x, y, color)
+        else:
+            self._draw_device_icon(draw, x, y, color)
+
+    def _draw_solar_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, color: str) -> None:
+        """Draw a solar panel icon."""
+        import math
+        
+        sun_radius = 15
+        sun_x = x + 25
+        sun_y = y + 15
+        draw.ellipse(
+            [sun_x - sun_radius, sun_y - sun_radius, sun_x + sun_radius, sun_y + sun_radius],
+            fill=color
+        )
+        
+        for i in range(8):
+            angle = i * (2 * math.pi / 8)
+            start_x = sun_x + int(math.cos(angle) * (sun_radius + 3))
+            start_y = sun_y + int(math.sin(angle) * (sun_radius + 3))
+            end_x = sun_x + int(math.cos(angle) * (sun_radius + 10))
+            end_y = sun_y + int(math.sin(angle) * (sun_radius + 10))
+            draw.line([start_x, start_y, end_x, end_y], fill=color, width=3)
+        
+        panel_y = y + 40
+        for i in range(3):
+            px = x + i * 18
+            draw.rectangle([px, panel_y, px + 15, panel_y + 25], fill=color, outline="#1a1a2e", width=2)
+            draw.line([px, panel_y + 8, px + 15, panel_y + 8], fill="#1a1a2e", width=1)
+            draw.line([px, panel_y + 17, px + 15, panel_y + 17], fill="#1a1a2e", width=1)
+
+    def _draw_power_pole_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, color: str) -> None:
+        """Draw a power pole/transmission tower icon."""
+        pole_x = x + 25
+        draw.rectangle([pole_x - 3, y + 15, pole_x + 3, y + 65], fill=color)
+        
+        draw.polygon([
+            (pole_x - 20, y + 20),
+            (pole_x + 20, y + 20),
+            (pole_x + 15, y + 35),
+            (pole_x - 15, y + 35)
+        ], outline=color, width=2)
+        
+        draw.line([pole_x - 15, y + 30, pole_x + 15, y + 30], fill=color, width=2)
+        
+        for i in range(3):
+            y_pos = y + 25 + i * 8
+            draw.line([pole_x - 12, y_pos, pole_x + 12, y_pos], fill=color, width=2)
+
+    def _draw_export_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, color: str) -> None:
+        """Draw an export/grid feed icon (arrow up with grid)."""
+        center_x = x + 25
+        center_y = y + 35
+        
+        draw.polygon([
+            (center_x, center_y - 20),
+            (center_x - 12, center_y - 5),
+            (center_x - 5, center_y - 5),
+            (center_x - 5, center_y + 15),
+            (center_x + 5, center_y + 15),
+            (center_x + 5, center_y - 5),
+            (center_x + 12, center_y - 5)
+        ], fill=color)
+        
+        for i in range(3):
+            y_line = y + 55 + i * 5
+            draw.line([x + 10, y_line, x + 40, y_line], fill=color, width=2)
+
+    def _draw_home_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, color: str) -> None:
+        """Draw a home/house icon."""
+        draw.polygon([
+            (x + 25, y + 10),
+            (x + 45, y + 30),
+            (x + 40, y + 30),
+            (x + 40, y + 60),
+            (x + 10, y + 60),
+            (x + 10, y + 30),
+            (x + 5, y + 30)
+        ], fill=color)
+        
+        draw.rectangle([x + 18, y + 45, x + 32, y + 60], fill="#1a1a2e")
+        
+        draw.rectangle([x + 15, y + 35, x + 22, y + 42], fill="#1a1a2e")
+        draw.rectangle([x + 28, y + 35, x + 35, y + 42], fill="#1a1a2e")
+
+    def _draw_device_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, color: str) -> None:
+        """Draw a generic device/plug icon."""
+        draw.rounded_rectangle(
+            [x + 10, y + 20, x + 40, y + 55],
+            radius=5,
+            fill=color
+        )
+        
+        draw.rectangle([x + 15, y + 25, x + 20, y + 35], fill="#1a1a2e")
+        draw.rectangle([x + 30, y + 25, x + 35, y + 35], fill="#1a1a2e")
+        
+        draw.ellipse([x + 20, y + 40, x + 30, y + 50], fill="#1a1a2e")
+        
+        draw.rectangle([x + 23, y + 55, x + 27, y + 65], fill=color)
 
     async def _create_chart(self, chart_data: dict[str, Any], period: str) -> Image.Image:
         """Create a matplotlib chart."""
