@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.1] - 2026-04-01
+
+### Fixed
+- 🐛 **Download-Funktion korrigiert**: Image bytes werden jetzt base64-encoded zurückgegeben
+- ✅ Service Response Format für Home Assistant kompatibel gemacht
+- 🔧 "Invalid JSON in response" Fehler behoben
+
+### Changed
+- 📦 Base64-Encoding für Download-Response implementiert
+
 ## [1.3.0] - 2026-04-01
 
 ### Changed

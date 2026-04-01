@@ -1,6 +1,7 @@
-"""The Energy Post integration."""
+"""The Energy Post integration for Home Assistant."""
 from __future__ import annotations
 
+import base64
 import logging
 import os
 from typing import Any
@@ -72,9 +73,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # Wenn download=True, gebe die Datei direkt zurück
             if download:
                 _LOGGER.info("Returning image for download: %s", filename)
+                # Base64-Encoding für Home Assistant Service Response
+                image_base64 = base64.b64encode(image_bytes).decode('utf-8')
                 return {
                     "filename": filename,
-                    "content": image_bytes,
+                    "content": image_base64,
                     "mime_type": "image/png",
                 }
             
