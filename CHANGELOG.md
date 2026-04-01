@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.1] - 2026-04-01
+
+### Fixed
+- 🐛 **Energy Manager API korrigiert**: Verwendet jetzt `data.async_get_manager()` statt direkten Zugriff
+- ✅ Fehler "'EnergyManager' object has no attribute 'async_get_preferences'" behoben
+- 🔧 Korrekte Import-Struktur für Energy Component
+
+### Technical
+- Import: `from homeassistant.components.energy import data`
+- API: `energy_manager = data.async_get_manager(hass)`
+
 ## [1.4.0] - 2026-04-01
 
 ### Changed

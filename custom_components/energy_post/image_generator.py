@@ -110,9 +110,11 @@ class EnergyImageGenerator:
         }
         
         # Versuche Energy Dashboard Konfiguration zu laden
-        energy_manager = self.hass.data.get("energy_manager")
-        if energy_manager:
-            try:
+        try:
+            from homeassistant.components.energy import data
+            
+            energy_manager = data.async_get_manager(self.hass)
+            if energy_manager:
                 energy_prefs = await energy_manager.async_get_preferences()
                 _LOGGER.debug("Energy Dashboard preferences loaded")
                 
@@ -190,11 +192,11 @@ class EnergyImageGenerator:
                     energy_data["grid_export"]
                 )
                 _LOGGER.info("Total Consumption: %.2f kWh", energy_data["consumption"])
+            else:
+                _LOGGER.warning("Energy Manager not found - Energy Dashboard may not be configured")
                 
-            except Exception as err:
-                _LOGGER.error("Error loading energy dashboard data: %s", err)
-        else:
-            _LOGGER.warning("Energy Manager not found - Energy Dashboard may not be configured")
+        except Exception as err:
+            _LOGGER.error("Error loading energy dashboard data: %s", err)
         
         # Device-spezifische Daten
         if devices:
