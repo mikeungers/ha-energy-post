@@ -38,6 +38,10 @@
         "filename": {
           "name": "Dateiname",
           "description": "Name der zu speichernden Bilddatei"
+        },
+        "download": {
+          "name": "Download",
+          "description": "Datei direkt herunterladen statt im www-Ordner zu speichern"
         }
       }
     }

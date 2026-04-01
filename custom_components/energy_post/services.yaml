@@ -40,3 +40,10 @@ generate_image:
       default: energy_stats.png
       selector:
         text:
+    download:
+      name: Download
+      description: Datei direkt herunterladen statt im www-Ordner zu speichern
+      required: false
+      default: false
+      selector:
+        boolean:

@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0] - 2026-04-01
+
+### Added
+- 📥 **Download-Funktionalität**: Bilder können jetzt direkt heruntergeladen werden
+- 🔧 Neuer Service-Parameter `download: true` für direkten Download
+- 📤 Service Response mit Bilddaten wenn `download=true`
+- ✅ Weiterhin Speicherung im www-Ordner wenn `download=false` (Standard)
+
+### Technical
+- Service unterstützt jetzt `SupportsResponse.OPTIONAL`
+- Response enthält `filename`, `content` und `mime_type` bei Download
+- Response enthält `filename`, `path` und `url` bei Speicherung
+
 ## [1.1.2] - 2026-04-01
 
 ### Fixed

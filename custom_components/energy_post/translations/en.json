@@ -38,6 +38,10 @@
         "filename": {
           "name": "Filename",
           "description": "Name of the image file to save"
+        },
+        "download": {
+          "name": "Download",
+          "description": "Download file directly instead of saving to www folder"
         }
       }
     }

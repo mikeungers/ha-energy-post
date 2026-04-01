@@ -9,7 +9,7 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 
 from .image_generator import EnergyImageGenerator
@@ -29,6 +29,7 @@ GENERATE_IMAGE_SCHEMA = vol.Schema(
         vol.Optional("devices", default=[]): vol.All(cv.ensure_list, [cv.entity_id]),
         vol.Optional("title"): cv.string,
         vol.Optional("filename", default="energy_stats.png"): cv.string,
+        vol.Optional("download", default=False): cv.boolean,
     }
 )
 
@@ -46,15 +47,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    async def handle_generate_image(call: ServiceCall) -> None:
+    async def handle_generate_image(call: ServiceCall) -> ServiceResponse:
         """Handle the generate_image service call."""
         period = call.data.get("period", "day")
         devices = call.data.get("devices", [])
         title = call.data.get("title")
         filename = call.data.get("filename", "energy_stats.png")
+        download = call.data.get("download", False)
 
         _LOGGER.info(
-            "Generating energy image for period: %s, devices: %s", period, devices
+            "Generating energy image for period: %s, devices: %s, download: %s", 
+            period, devices, download
         )
 
         generator = EnergyImageGenerator(hass)
@@ -66,6 +69,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 title=title,
             )
 
+            # Wenn download=True, gebe die Datei direkt zurück
+            if download:
+                _LOGGER.info("Returning image for download: %s", filename)
+                return {
+                    "filename": filename,
+                    "content": image_bytes,
+                    "mime_type": "image/png",
+                }
+            
+            # Ansonsten speichere im www-Ordner wie bisher
             output_path = hass.config.path("www", filename)
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
@@ -82,6 +95,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "url": f"/local/{filename}",
                 },
             )
+            
+            return {
+                "filename": filename,
+                "path": output_path,
+                "url": f"/local/{filename}",
+            }
 
         except Exception as err:
             _LOGGER.error("Error generating energy image: %s", err)
@@ -92,6 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         SERVICE_GENERATE_IMAGE,
         handle_generate_image,
         schema=GENERATE_IMAGE_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     return True
