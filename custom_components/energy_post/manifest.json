@@ -2,16 +2,16 @@
   "domain": "energy_post",
   "name": "Energy Post",
   "codeowners": [
-    "@yourusername"
+    "@mikeungers"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/yourusername/ha-energy-post",
+  "documentation": "https://github.com/mikeungers/ha-energy-post",
   "integration_type": "device",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/yourusername/ha-energy-post/issues",
+  "issue_tracker": "https://github.com/mikeungers/ha-energy-post/issues",
   "requirements": [
-    "pillow==10.2.0",
-    "matplotlib==3.8.2"
+    "pillow>=10.0.0",
+    "matplotlib>=3.9.0"
   ],
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
