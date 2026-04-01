@@ -63,42 +63,12 @@ class TemplateRenderer:
         # label_font: Größe für die Beschriftung (z.B. "PV Ertrag")
         # title_font: Größe für den Titel oben (z.B. "Energie Heute")
         
-        # Font-Pfade für verschiedene Betriebssysteme
-        font_paths = [
-            "arial.ttf",                                    # Windows (im PATH)
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux (Debian/Ubuntu)
-            "/usr/share/fonts/dejavu/DejaVuSans.ttf",          # Linux (andere Distros)
-            "/System/Library/Fonts/Helvetica.ttc",             # macOS
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux (Liberation)
-        ]
-        
-        # Versuche verschiedene Fonts zu laden
-        value_font = None
-        for font_path in font_paths:
-            try:
-                value_font = ImageFont.truetype(font_path, 75)
-                unit_font = ImageFont.truetype(font_path, 50)
-                label_font = ImageFont.truetype(font_path, 38)
-                title_font = ImageFont.truetype(font_path, 90)
-                break
-            except (OSError, IOError):
-                continue
-        
-        # Fallback: Pillow's embedded default font (seit Pillow 10.0.0)
-        # Dieser Font unterstützt Größenangaben!
-        if value_font is None:
-            try:
-                # Pillow >= 10.0.0 hat einen embedded TrueType font
-                value_font = ImageFont.truetype(size=75)
-                unit_font = ImageFont.truetype(size=50)
-                label_font = ImageFont.truetype(size=38)
-                title_font = ImageFont.truetype(size=90)
-            except (OSError, IOError, TypeError):
-                # Letzter Fallback: load_default() für sehr alte Pillow-Versionen
-                value_font = ImageFont.load_default()
-                unit_font = ImageFont.load_default()
-                label_font = ImageFont.load_default()
-                title_font = ImageFont.load_default()
+        # Standard: Pillow's embedded default font (seit Pillow 10.0.0)
+        # load_default() mit size Parameter für skalierbaren Font
+        value_font = ImageFont.load_default(size=75)
+        unit_font = ImageFont.load_default(size=50)
+        label_font = ImageFont.load_default(size=38)
+        title_font = ImageFont.load_default(size=90)
         
         width, height = template.size
         
@@ -275,12 +245,13 @@ class TemplateRenderer:
         
         # Wert und Einheit linksbündig innerhalb der Bubble zeichnen
         value_x = x + padding_x
-        value_y = y + padding_y + 10
+        # ANPASSUNG: Wert höher positionieren (kleinerer Offset = höher)
+        value_y = y + padding_y
         
         draw.text((value_x, value_y), value_text, fill=color, font=value_font)
-        draw.text((value_x + value_width + spacing, value_y + 10), unit, fill="#aaaaaa", font=unit_font)
+        draw.text((value_x + value_width + spacing, value_y + 25), unit, fill="#aaaaaa", font=unit_font)
         
         # Label linksbündig innerhalb der Bubble zeichnen
         label_x = x + padding_x
-        label_y = value_y + value_height + padding_y
+        label_y = value_y + value_height + padding_y + 5
         draw.text((label_x, label_y), label, fill="#cccccc", font=label_font)
