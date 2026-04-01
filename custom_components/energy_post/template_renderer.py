@@ -84,14 +84,21 @@ class TemplateRenderer:
             except (OSError, IOError):
                 continue
         
-        # Fallback auf Default-Font nur wenn nichts gefunden wurde
+        # Fallback: Pillow's embedded default font (seit Pillow 10.0.0)
+        # Dieser Font unterstützt Größenangaben!
         if value_font is None:
-            # Default-Font ist sehr klein, daher nutzen wir ihn mehrfach übereinander
-            # um größere Schrift zu simulieren (nicht ideal, aber besser als nichts)
-            value_font = ImageFont.load_default()
-            unit_font = ImageFont.load_default()
-            label_font = ImageFont.load_default()
-            title_font = ImageFont.load_default()
+            try:
+                # Pillow >= 10.0.0 hat einen embedded TrueType font
+                value_font = ImageFont.truetype(size=75)
+                unit_font = ImageFont.truetype(size=50)
+                label_font = ImageFont.truetype(size=38)
+                title_font = ImageFont.truetype(size=90)
+            except (OSError, IOError, TypeError):
+                # Letzter Fallback: load_default() für sehr alte Pillow-Versionen
+                value_font = ImageFont.load_default()
+                unit_font = ImageFont.load_default()
+                label_font = ImageFont.load_default()
+                title_font = ImageFont.load_default()
         
         width, height = template.size
         

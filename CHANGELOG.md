@@ -3,10 +3,11 @@
 ## [1.1.2] - 2026-04-01
 
 ### Fixed
-- 🐛 **Font-Problem in Home Assistant behoben**: Verbesserte Font-Fallback-Logik
-- ✅ Unterstützung für verschiedene Betriebssysteme (Windows, Linux, macOS)
-- 📝 Mehrere Font-Pfade werden durchprobiert (DejaVu, Liberation, Helvetica)
-- 🔧 Text wird jetzt auch in Home Assistant in korrekter Größe angezeigt
+- 🐛 **Font-Problem in Home Assistant behoben**: Nutzt Pillow's embedded default font
+- ✅ **Keine externe Font-Installation mehr nötig**: Pillow >= 10.0.0 hat embedded TrueType font
+- 📝 Mehrere Font-Pfade werden durchprobiert (System-Fonts als erste Wahl)
+- 🔧 Fallback auf Pillow's `ImageFont.truetype(size=X)` funktioniert überall
+- ⚡ Text wird jetzt auch in Home Assistant in korrekter Größe angezeigt
 
 ### Added
 - 🔢 **Intelligente Zahlenformatierung**: Keine Nachkommastelle bei Werten ≥ 100
