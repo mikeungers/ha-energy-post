@@ -62,12 +62,32 @@ class TemplateRenderer:
         # unit_font: Größe für die Einheit (z.B. "kWh")
         # label_font: Größe für die Beschriftung (z.B. "PV Ertrag")
         # title_font: Größe für den Titel oben (z.B. "Energie Heute")
-        try:
-            value_font = ImageFont.truetype("arial.ttf", 75)
-            unit_font = ImageFont.truetype("arial.ttf", 50)
-            label_font = ImageFont.truetype("arial.ttf", 38)
-            title_font = ImageFont.truetype("arial.ttf", 90)
-        except OSError:
+        
+        # Font-Pfade für verschiedene Betriebssysteme
+        font_paths = [
+            "arial.ttf",                                    # Windows (im PATH)
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux (Debian/Ubuntu)
+            "/usr/share/fonts/dejavu/DejaVuSans.ttf",          # Linux (andere Distros)
+            "/System/Library/Fonts/Helvetica.ttc",             # macOS
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux (Liberation)
+        ]
+        
+        # Versuche verschiedene Fonts zu laden
+        value_font = None
+        for font_path in font_paths:
+            try:
+                value_font = ImageFont.truetype(font_path, 75)
+                unit_font = ImageFont.truetype(font_path, 50)
+                label_font = ImageFont.truetype(font_path, 38)
+                title_font = ImageFont.truetype(font_path, 90)
+                break
+            except (OSError, IOError):
+                continue
+        
+        # Fallback auf Default-Font nur wenn nichts gefunden wurde
+        if value_font is None:
+            # Default-Font ist sehr klein, daher nutzen wir ihn mehrfach übereinander
+            # um größere Schrift zu simulieren (nicht ideal, aber besser als nichts)
             value_font = ImageFont.load_default()
             unit_font = ImageFont.load_default()
             label_font = ImageFont.load_default()

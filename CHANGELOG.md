@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.2] - 2026-04-01
+
+### Fixed
+- 🐛 **Font-Problem in Home Assistant behoben**: Verbesserte Font-Fallback-Logik
+- ✅ Unterstützung für verschiedene Betriebssysteme (Windows, Linux, macOS)
+- 📝 Mehrere Font-Pfade werden durchprobiert (DejaVu, Liberation, Helvetica)
+- 🔧 Text wird jetzt auch in Home Assistant in korrekter Größe angezeigt
+
+### Added
+- 🔢 **Intelligente Zahlenformatierung**: Keine Nachkommastelle bei Werten ≥ 100
+- 🌍 **Locale-basiertes Dezimaltrennzeichen**: Komma (DE) oder Punkt (EN/US)
+- 📏 **Dynamische Bubble-Größe**: Passt sich automatisch an Textlänge an
+- 📍 **Linksbündiger Ankerpunkt**: Konsistente Positionierung bei dynamischer Größe
+
 ## [1.1.1] - 2026-04-01
 
 ### Changed
