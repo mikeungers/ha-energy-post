@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.4.0] - 2026-04-01
+
+### Changed
+- 🔌 **Energy Dashboard Integration**: Daten werden jetzt direkt aus dem Energy Dashboard geladen
+- ✅ **Keine hardcoded Entity-IDs mehr**: Nutzt automatisch die im Energy Dashboard konfigurierten Sensoren
+- 📊 **Automatische Berechnung**: Verbrauch wird aus PV + Netzbezug - Einspeisung berechnet
+- 🔍 **Besseres Logging**: Debug-Logs zeigen welche Entities gefunden und verwendet werden
+
+### Fixed
+- 🐛 **Werte waren immer 0**: Integration liest jetzt korrekt aus dem Energy Dashboard
+- ✅ **Energy Manager Integration**: Nutzt `energy_manager` aus Home Assistant Core
+
+### Technical
+- Verwendet `energy_manager.async_get_preferences()` für Energy Dashboard Konfiguration
+- Liest `stat_energy_from` und `stat_energy_to` aus Energy Sources
+- Nutzt `statistics_during_period()` für historische Daten
+- Unterstützt Solar, Grid Import/Export automatisch
+
+### Requirements
+- ⚠️ **Energy Dashboard muss konfiguriert sein** in Home Assistant
+- Einstellungen → Dashboards → Energie → Konfiguration
+
 ## [1.3.1] - 2026-04-01
 
 ### Fixed

@@ -89,7 +89,7 @@ class EnergyImageGenerator:
     async def _fetch_from_recorder(
         self, start_time: datetime, end_time: datetime, devices: list[str] | None
     ) -> dict[str, Any]:
-        """Fetch data from the recorder."""
+        """Fetch data from the recorder using Energy Dashboard configuration."""
         from homeassistant.components.recorder.statistics import (
             statistics_during_period,
         )
@@ -109,21 +109,94 @@ class EnergyImageGenerator:
             }
         }
         
-        entity_mapping = {
-            "pv_production": "sensor.solar_production",
-            "grid_import": "sensor.grid_import",
-            "grid_export": "sensor.grid_export",
-            "consumption": "sensor.total_consumption",
-        }
+        # Versuche Energy Dashboard Konfiguration zu laden
+        energy_manager = self.hass.data.get("energy_manager")
+        if energy_manager:
+            try:
+                energy_prefs = await energy_manager.async_get_preferences()
+                _LOGGER.debug("Energy Dashboard preferences loaded")
+                
+                # Solar Production
+                if energy_prefs.get("energy_sources"):
+                    for source in energy_prefs["energy_sources"]:
+                        if source.get("type") == "solar":
+                            stat_id = source.get("stat_energy_from")
+                            if stat_id:
+                                _LOGGER.debug("Found solar stat_id: %s", stat_id)
+                                stats = await self.hass.async_add_executor_job(
+                                    statistics_during_period,
+                                    self.hass,
+                                    start_time,
+                                    end_time,
+                                    {stat_id},
+                                    "hour",
+                                    None,
+                                    {"sum"},
+                                )
+                                if stats and stat_id in stats:
+                                    stat_list = stats[stat_id]
+                                    if stat_list:
+                                        energy_data["pv_production"] = stat_list[-1].get("sum", 0.0)
+                                        _LOGGER.info("PV Production: %.2f kWh", energy_data["pv_production"])
+                
+                # Grid Import/Export
+                if energy_prefs.get("energy_sources"):
+                    for source in energy_prefs["energy_sources"]:
+                        if source.get("type") == "grid":
+                            for flow in source.get("flow_from", []):
+                                stat_id = flow.get("stat_energy_from")
+                                if stat_id:
+                                    _LOGGER.debug("Found grid import stat_id: %s", stat_id)
+                                    stats = await self.hass.async_add_executor_job(
+                                        statistics_during_period,
+                                        self.hass,
+                                        start_time,
+                                        end_time,
+                                        {stat_id},
+                                        "hour",
+                                        None,
+                                        {"sum"},
+                                    )
+                                    if stats and stat_id in stats:
+                                        stat_list = stats[stat_id]
+                                        if stat_list:
+                                            energy_data["grid_import"] = stat_list[-1].get("sum", 0.0)
+                                            _LOGGER.info("Grid Import: %.2f kWh", energy_data["grid_import"])
+                            
+                            for flow in source.get("flow_to", []):
+                                stat_id = flow.get("stat_energy_to")
+                                if stat_id:
+                                    _LOGGER.debug("Found grid export stat_id: %s", stat_id)
+                                    stats = await self.hass.async_add_executor_job(
+                                        statistics_during_period,
+                                        self.hass,
+                                        start_time,
+                                        end_time,
+                                        {stat_id},
+                                        "hour",
+                                        None,
+                                        {"sum"},
+                                    )
+                                    if stats and stat_id in stats:
+                                        stat_list = stats[stat_id]
+                                        if stat_list:
+                                            energy_data["grid_export"] = stat_list[-1].get("sum", 0.0)
+                                            _LOGGER.info("Grid Export: %.2f kWh", energy_data["grid_export"])
+                
+                # Consumption berechnen
+                energy_data["consumption"] = (
+                    energy_data["pv_production"] + 
+                    energy_data["grid_import"] - 
+                    energy_data["grid_export"]
+                )
+                _LOGGER.info("Total Consumption: %.2f kWh", energy_data["consumption"])
+                
+            except Exception as err:
+                _LOGGER.error("Error loading energy dashboard data: %s", err)
+        else:
+            _LOGGER.warning("Energy Manager not found - Energy Dashboard may not be configured")
         
-        for key, entity_id in entity_mapping.items():
-            state = self.hass.states.get(entity_id)
-            if state and state.state not in ("unknown", "unavailable"):
-                try:
-                    energy_data[key] = float(state.state)
-                except (ValueError, TypeError):
-                    _LOGGER.warning("Could not convert state for %s", entity_id)
-        
+        # Device-spezifische Daten
         if devices:
             for device_entity in devices:
                 state = self.hass.states.get(device_entity)
@@ -131,6 +204,7 @@ class EnergyImageGenerator:
                     try:
                         device_name = state.attributes.get("friendly_name", device_entity)
                         energy_data["devices"][device_name] = float(state.state)
+                        _LOGGER.debug("Device %s: %.2f kWh", device_name, energy_data["devices"][device_name])
                     except (ValueError, TypeError):
                         _LOGGER.warning("Could not convert state for %s", device_entity)
         
