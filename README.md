@@ -53,12 +53,13 @@ Generiert ein Instagram-Story-Bild mit Energie-Statistiken.
 
 #### Parameter
 
-| Parameter | Typ | Erforderlich | Standard | Beschreibung |
-|-----------|-----|--------------|----------|--------------|
-| `period` | string | Nein | `day` | Zeitraum: `day`, `week`, oder `month` |
-| `devices` | list | Nein | `[]` | Liste von Energie-Sensor-Entities |
-| `title` | string | Nein | Auto | Benutzerdefinierter Titel |
-| `filename` | string | Nein | `energy_stats.png` | Dateiname im `www` Ordner |
+| Parameter  | Typ     | Erforderlich | Standard           | Beschreibung                                                                    |
+| ---------- | ------- | ------------ | ------------------ | ------------------------------------------------------------------------------- |
+| `period`   | string  | Nein         | `day`              | Zeitraum: `day`, `week`, oder `month`                                           |
+| `devices`  | list    | Nein         | `[]`               | Liste von Energie-Sensor-Entities (max. 2 werden dargestellt)                   |
+| `title`    | string  | Nein         | Auto               | Benutzerdefinierter Titel                                                       |
+| `filename` | string  | Nein         | `energy_stats.png` | Dateiname im `www` Ordner                                                       |
+| `download` | boolean | Nein         | `false`            | `true`: Bild wird als Service-Response (base64) zurückgegeben statt gespeichert |
 
 #### Beispiel: Service-Aufruf in der UI
 
@@ -128,29 +129,23 @@ automation:
 ### Zugriff auf generierte Bilder
 
 Die Bilder werden im `www` Ordner gespeichert und sind unter folgender URL erreichbar:
+
 ```
 http://YOUR_HA_URL:8123/local/FILENAME.png
 ```
 
-## 📊 Datenquellen anpassen
+## 📊 Datenquellen
 
-Die Integration sucht standardmäßig nach folgenden Entities:
+Die Integration liest PV-Produktion, Netzbezug und Einspeisung **automatisch aus der Energy-Dashboard-Konfiguration** – es ist keine manuelle Entity-Zuordnung nötig.
 
-- **PV-Produktion**: `sensor.solar_production`
-- **Netzbezug**: `sensor.grid_import`
-- **Einspeisung**: `sensor.grid_export`
-- **Gesamtverbrauch**: `sensor.total_consumption`
+**Voraussetzungen**:
 
-Um Ihre eigenen Entities zu verwenden, passen Sie die `entity_mapping` in `custom_components/energy_post/image_generator.py` an:
+- **Energy Dashboard konfiguriert**: Einstellungen → Dashboards → Energie (Solar- und Netz-Quellen hinzufügen)
+- **Recorder aktiv**: die Statistiken kommen aus der Langzeit-Statistik des Recorders
 
-```python
-entity_mapping = {
-    "pv_production": "sensor.YOUR_SOLAR_SENSOR",
-    "grid_import": "sensor.YOUR_GRID_IMPORT_SENSOR",
-    "grid_export": "sensor.YOUR_GRID_EXPORT_SENSOR",
-    "consumption": "sensor.YOUR_CONSUMPTION_SENSOR",
-}
-```
+**Einzelne Geräte** (z.B. Wärmepumpe, Wallbox) werden über den Service-Parameter `devices` übergeben – aktuell werden maximal 2 Geräte im Bild dargestellt.
+
+**Gesamtverbrauch** wird berechnet als: `PV-Ertrag + Netzbezug − Einspeisung`
 
 ## Sensoren
 
@@ -170,16 +165,55 @@ Diese Integration erstellt folgende Sensoren:
 
 ```bash
 # Repository klonen
-git clone https://github.com/yourusername/ha-energy-post.git
+git clone https://github.com/mikeungers/ha-energy-post.git
 cd ha-energy-post
 
-# In Home Assistant custom_components Verzeichnis verlinken
+# Linux/macOS: In Home Assistant custom_components Verzeichnis verlinken
 ln -s $(pwd)/custom_components/energy_post ~/.homeassistant/custom_components/
+
+# Windows: Ordner in das HA-config-Verzeichnis kopieren (Symlinks brauchen Admin-Rechte)
+xcopy /E /I custom_components\energy_post <HA-config>\custom_components\energy_post
 ```
+
+## 🧪 Testen
+
+### Lokaler Bildtest (ohne Home Assistant)
+
+Der Renderer lässt sich ohne laufendes Home Assistant testen – ideal zum Anpassen von Positionen, Schriftgrößen und Farben in `custom_components/energy_post/template_renderer.py`:
+
+```bash
+pip install "pillow>=10.0.0"
+python test_template_overlay.py
+```
+
+Das Skript erzeugt `test_template_result.png` im Projektverzeichnis und nutzt denselben `TemplateRenderer` wie die produktive Integration. Die Testwerte können über `MOCK_ENERGY_DATA` im Skript angepasst werden (Werte < 100 werden mit einer Nachkommastelle formatiert, Werte ≥ 100 ohne).
+
+### Service in Home Assistant testen
+
+1. **Voraussetzung prüfen**: Energy Dashboard konfiguriert (Einstellungen → Dashboards → Energie) und Recorder aktiv – sonst enthält das Bild nur Nullen
+2. **Entwicklerwerkzeuge** → **Aktionen** → `energy_post.generate_image` aufrufen
+3. Ergebnis prüfen unter `http://<HA>:8123/local/energy_stats.png` – oder `download: true` setzen, um das Bild direkt als Service-Response zu erhalten
+4. Das Event `energy_post_image_generated` lässt sich unter **Entwicklerwerkzeuge** → **Ereignisse** beobachten
+
+### Fehlersuche
+
+- **Logs**: Einstellungen → System → Protokolle → nach `energy_post` filtern. Die Integration loggt gefundene Sensoren und berechnete Werte. Ausführlichere Logs über `configuration.yaml`:
+
+```yaml
+logger:
+  logs:
+    custom_components.energy_post: debug
+```
+
+- **Alle Werte 0,0?** Prüfen Sie: Energy Dashboard konfiguriert? Recorder läuft? Haben die Sensoren Statistiken (Entwicklerwerkzeuge → Statistiken)?
+
+### CI-Validierung
+
+Bei jedem Push und Pull Request laufen [hassfest](https://github.com/home-assistant/actions) und die [HACS-Action](https://github.com/hacs/action) (`.github/workflows/validate.yml`).
 
 ## Support
 
-Bei Problemen oder Fragen erstellen Sie bitte ein [Issue](https://github.com/yourusername/ha-energy-post/issues).
+Bei Problemen oder Fragen erstellen Sie bitte ein [Issue](https://github.com/mikeungers/ha-energy-post/issues).
 
 ## Lizenz
 

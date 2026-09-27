@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import inspect
 import logging
 import os
 from typing import Any
@@ -75,24 +76,88 @@ class EnergyImageGenerator:
             }
         }
         
-        try:
-            recorder = self.hass.data.get("recorder_instance")
-            if recorder:
+        if self._recorder_available():
+            try:
                 energy_data = await self._fetch_from_recorder(
-                    start_time, end_time, devices
+                    start_time, end_time
                 )
-        except Exception as err:
-            _LOGGER.error("Error fetching energy data: %s", err)
+            except Exception:
+                _LOGGER.exception("Error fetching energy data from recorder")
+        else:
+            _LOGGER.warning(
+                "Recorder is not running - energy statistics are unavailable"
+            )
+        
+        # Device values come from current states and work without the recorder
+        if devices:
+            self._collect_device_states(energy_data, devices)
+        
+        if not energy_data["devices"] and not any(
+            energy_data[key]
+            for key in (
+                "pv_production",
+                "grid_import",
+                "grid_export",
+                "consumption",
+            )
+        ):
+            _LOGGER.warning(
+                "No energy data available - the generated image will only "
+                "contain zeros. Check that the Energy Dashboard is configured "
+                "(Settings -> Dashboards -> Energy) and the recorder is running."
+            )
         
         return energy_data
+    
+    def _recorder_available(self) -> bool:
+        """Return True if a recorder instance is running."""
+        try:
+            from homeassistant.components.recorder import get_instance
+        except ImportError:
+            # Fallback for HA versions without the public helper
+            return self.hass.data.get("recorder_instance") is not None
+        try:
+            return get_instance(self.hass) is not None
+        except KeyError:
+            return False
+    
+    def _collect_device_states(
+        self, energy_data: dict[str, Any], devices: list[str]
+    ) -> None:
+        """Read current energy values of the given device entities."""
+        for device_entity in devices:
+            state = self.hass.states.get(device_entity)
+            if not state:
+                _LOGGER.warning("Device entity %s not found", device_entity)
+                continue
+            if state.state in ("unknown", "unavailable"):
+                _LOGGER.warning(
+                    "Device entity %s has no usable state", device_entity
+                )
+                continue
+            try:
+                device_name = state.attributes.get(
+                    "friendly_name", device_entity
+                )
+                energy_data["devices"][device_name] = float(state.state)
+                _LOGGER.debug(
+                    "Device %s: %.2f kWh",
+                    device_name,
+                    energy_data["devices"][device_name],
+                )
+            except (ValueError, TypeError):
+                _LOGGER.warning(
+                    "Could not convert state for %s", device_entity
+                )
 
     async def _fetch_from_recorder(
-        self, start_time: datetime, end_time: datetime, devices: list[str] | None
+        self, start_time: datetime, end_time: datetime
     ) -> dict[str, Any]:
         """Fetch data from the recorder using Energy Dashboard configuration."""
         from homeassistant.components.recorder.statistics import (
             statistics_during_period,
         )
+        from homeassistant.components.energy.data import async_get_manager
         
         energy_data = {
             "pv_production": 0.0,
@@ -111,15 +176,23 @@ class EnergyImageGenerator:
         
         # Versuche Energy Dashboard Konfiguration zu laden
         try:
-            # Importiere Energy Component
-            from homeassistant.components.energy.data import async_get_manager
-            
-            energy_manager = await async_get_manager(self.hass)
+            manager_result = async_get_manager(self.hass)
+            # async_get_manager is awaitable in recent HA versions
+            energy_manager = (
+                await manager_result
+                if inspect.isawaitable(manager_result)
+                else manager_result
+            )
             if not energy_manager:
                 _LOGGER.warning("Energy Manager not available")
                 return energy_data
-                
-            energy_prefs = await energy_manager.async_get_preferences()
+            
+            # EnergyManager stores the dashboard configuration in .data;
+            # some HA versions expose async_get_preferences() instead.
+            if hasattr(energy_manager, "async_get_preferences"):
+                energy_prefs = await energy_manager.async_get_preferences()
+            else:
+                energy_prefs = energy_manager.data
             if not energy_prefs:
                 _LOGGER.warning("Energy Dashboard not configured")
                 return energy_data
@@ -180,20 +253,8 @@ class EnergyImageGenerator:
                 
         except ImportError:
             _LOGGER.error("Energy component not available - please configure Energy Dashboard")
-        except Exception as err:
-            _LOGGER.error("Error loading energy dashboard data: %s", err, exc_info=True)
-        
-        # Device-spezifische Daten
-        if devices:
-            for device_entity in devices:
-                state = self.hass.states.get(device_entity)
-                if state and state.state not in ("unknown", "unavailable"):
-                    try:
-                        device_name = state.attributes.get("friendly_name", device_entity)
-                        energy_data["devices"][device_name] = float(state.state)
-                        _LOGGER.debug("Device %s: %.2f kWh", device_name, energy_data["devices"][device_name])
-                    except (ValueError, TypeError):
-                        _LOGGER.warning("Could not convert state for %s", device_entity)
+        except Exception:
+            _LOGGER.exception("Error loading energy dashboard data")
         
         return energy_data
 
@@ -206,10 +267,13 @@ class EnergyImageGenerator:
     ) -> float | None:
         """Get the sum of a statistic for a given period."""
         try:
+            # Start one hour earlier: a bucket's "sum" is recorded at its end,
+            # so the bucket before start_time holds the sum at period start.
+            # Without it, the first hour of the period would be lost.
             stats = await self.hass.async_add_executor_job(
                 statistics_during_period,
                 self.hass,
-                start_time,
+                start_time - timedelta(hours=1),
                 end_time,
                 {stat_id},
                 "hour",
@@ -233,8 +297,8 @@ class EnergyImageGenerator:
             _LOGGER.warning("No statistics found for %s", stat_id)
             return None
             
-        except Exception as err:
-            _LOGGER.error("Error fetching statistic %s: %s", stat_id, err)
+        except Exception:
+            _LOGGER.exception("Error fetching statistic %s", stat_id)
             return None
 
     def _get_period_title(self, period: str) -> str:
