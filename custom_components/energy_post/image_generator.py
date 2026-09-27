@@ -318,29 +318,42 @@ class EnergyImageGenerator:
     ) -> float | None:
         """Get the sum of a statistic for a given period."""
         try:
-            # Start one hour earlier: a bucket's "sum" is recorded at its end,
-            # so the bucket before start_time holds the sum at period start.
-            # Without it, the first hour of the period would be lost.
+            # Ask for both "change" (per-bucket delta - what the energy
+            # dashboard sums) and "sum" (cumulative, fallback anchor).
             stats = await self.hass.async_add_executor_job(
                 statistics_during_period,
                 self.hass,
-                start_time - timedelta(hours=1),
+                start_time,
                 end_time,
                 {stat_id},
                 "hour",
                 None,
-                {"sum"},
+                {"sum", "change"},
             )
             
             if stats and stat_id in stats:
                 stat_list = stats[stat_id]
-                # Skip buckets whose sum is None - anchoring on a missing sum
-                # would turn the diff into the lifetime total.
+                # Preferred: sum the per-bucket "change" values, same as the
+                # energy dashboard. Each bucket already carries its own delta,
+                # so no boundary anchor or missing-sum pitfalls.
+                changes = [
+                    row["change"]
+                    for row in stat_list
+                    if row.get("change") is not None
+                ]
+                if changes and len(changes) == len(stat_list):
+                    total = sum(changes)
+                    _LOGGER.debug(
+                        "Statistic %s: %d bucket changes -> %.2f kWh",
+                        stat_id, len(changes), total,
+                    )
+                    return total
+                # Fallback (e.g. imported stats without stored change):
+                # diff of cumulative sums, ignoring buckets without a sum.
                 sums = [
                     row["sum"] for row in stat_list if row.get("sum") is not None
                 ]
                 if len(sums) >= 2:
-                    # Berechne Differenz zwischen letztem und erstem Wert
                     first_sum, last_sum = sums[0], sums[-1]
                     diff = last_sum - first_sum
                     _LOGGER.debug(
