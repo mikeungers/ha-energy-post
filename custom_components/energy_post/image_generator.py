@@ -65,6 +65,8 @@ class EnergyImageGenerator:
             "pv_production": 0.0,
             "grid_import": 0.0,
             "grid_export": 0.0,
+            "battery_charge": 0.0,
+            "battery_discharge": 0.0,
             "consumption": 0.0,
             "devices": {},
             "chart_data": {
@@ -163,6 +165,8 @@ class EnergyImageGenerator:
             "pv_production": 0.0,
             "grid_import": 0.0,
             "grid_export": 0.0,
+            "battery_charge": 0.0,
+            "battery_discharge": 0.0,
             "consumption": 0.0,
             "devices": {},
             "chart_data": {
@@ -215,8 +219,36 @@ class EnergyImageGenerator:
                             stat_id, start_time, end_time, statistics_during_period
                         )
                         if value is not None:
-                            energy_data["pv_production"] = value
+                            # Accumulate - several solar sources (e.g. two
+                            # inverters) may be configured.
+                            energy_data["pv_production"] += value
                             _LOGGER.info("PV Production: %.2f kWh", value)
+                    else:
+                        _LOGGER.warning(
+                            "Solar source without stat_energy_from - skipped"
+                        )
+                
+                elif source_type == "battery":
+                    # Battery sources use stat_energy_from (discharge) and
+                    # stat_energy_to (charge) directly - no flow lists.
+                    discharge_id = source.get("stat_energy_from")
+                    if discharge_id:
+                        _LOGGER.info("Found battery discharge sensor: %s", discharge_id)
+                        value = await self._get_statistic_sum(
+                            discharge_id, start_time, end_time, statistics_during_period
+                        )
+                        if value is not None:
+                            energy_data["battery_discharge"] += value
+                            _LOGGER.info("Battery discharge: %.2f kWh", value)
+                    charge_id = source.get("stat_energy_to")
+                    if charge_id:
+                        _LOGGER.info("Found battery charge sensor: %s", charge_id)
+                        value = await self._get_statistic_sum(
+                            charge_id, start_time, end_time, statistics_during_period
+                        )
+                        if value is not None:
+                            energy_data["battery_charge"] += value
+                            _LOGGER.info("Battery charge: %.2f kWh", value)
                 
                 elif source_type == "grid":
                     # Support both the unified format (stat_energy_from /
@@ -257,11 +289,16 @@ class EnergyImageGenerator:
                             energy_data["grid_export"] += value
                             _LOGGER.info("Grid Export: %.2f kWh", value)
                 
-            # Consumption berechnen
+            # Consumption = PV + grid import + battery discharge
+            #               - grid export - battery charge
+            # (same balance the HA energy dashboard uses; without the battery
+            # terms the result goes wrong for systems with storage)
             energy_data["consumption"] = (
-                energy_data["pv_production"] + 
-                energy_data["grid_import"] - 
-                energy_data["grid_export"]
+                energy_data["pv_production"]
+                + energy_data["grid_import"]
+                + energy_data["battery_discharge"]
+                - energy_data["grid_export"]
+                - energy_data["battery_charge"]
             )
             _LOGGER.info("Total Consumption: %.2f kWh", energy_data["consumption"])
                 
@@ -297,16 +334,32 @@ class EnergyImageGenerator:
             
             if stats and stat_id in stats:
                 stat_list = stats[stat_id]
-                if stat_list and len(stat_list) > 0:
+                # Skip buckets whose sum is None - anchoring on a missing sum
+                # would turn the diff into the lifetime total.
+                sums = [
+                    row["sum"] for row in stat_list if row.get("sum") is not None
+                ]
+                if len(sums) >= 2:
                     # Berechne Differenz zwischen letztem und erstem Wert
-                    first_sum = stat_list[0].get("sum", 0.0) or 0.0
-                    last_sum = stat_list[-1].get("sum", 0.0) or 0.0
+                    first_sum, last_sum = sums[0], sums[-1]
                     diff = last_sum - first_sum
                     _LOGGER.debug(
-                        "Statistic %s: first=%.2f, last=%.2f, diff=%.2f",
-                        stat_id, first_sum, last_sum, diff
+                        "Statistic %s: first=%.2f, last=%.2f, diff=%.2f "
+                        "(%d buckets)",
+                        stat_id, first_sum, last_sum, diff, len(sums)
                     )
+                    if diff < -0.001:
+                        _LOGGER.warning(
+                            "Negative statistic diff for %s (%.2f -> %.2f) - "
+                            "the statistic may not be cumulative",
+                            stat_id, first_sum, last_sum,
+                        )
                     return diff
+                _LOGGER.warning(
+                    "Not enough statistic rows with sum for %s (%d rows)",
+                    stat_id, len(stat_list),
+                )
+                return None
             
             _LOGGER.warning("No statistics found for %s", stat_id)
             return None
