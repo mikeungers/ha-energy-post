@@ -1,0 +1,8 @@
+# Minimal HA config for the energy_post e2e tests.
+# default_config brings recorder, energy, frontend, api, websocket_api, etc.
+
+default_config:
+
+logger:
+  logs:
+    custom_components.energy_post: debug

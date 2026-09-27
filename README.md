@@ -195,6 +195,37 @@ Das Skript erzeugt `test_template_result.png` im Projektverzeichnis und nutzt de
 3. Ergebnis prüfen unter `http://<HA>:8123/local/energy_stats.png` – oder `download: true` setzen, um das Bild direkt als Service-Response zu erhalten
 4. Das Event `energy_post_image_generated` lässt sich unter **Entwicklerwerkzeuge** → **Ereignisse** beobachten
 
+### End-to-End-Test (Docker + Playwright)
+
+Im Ordner `e2e/` liegt eine komplette E2E-Suite: ein echter Home-Assistant-Container mit vorkonfiguriertem Energy Dashboard (`e2e/ha-config/.storage/energy`) plus pytest/Playwright-Tests für Onboarding, Config Flow und `generate_image` mit echten Recorder-Statistiken.
+
+**Voraussetzungen**: Docker Desktop (Compose v2), Python 3.11+
+
+```powershell
+# aus dem Repo-Root
+python -m pip install -r e2e/requirements.txt
+python -m playwright install chromium   # einmalig
+
+python -m pytest e2e -v                 # startet den HA-Container automatisch
+```
+
+> **Hinweis**: Falls `pytest`/`playwright` als Befehle nicht gefunden werden (`Scripts`-Ordner nicht im PATH), immer die `python -m`-Form verwenden.
+
+Der Container startet über ein pytest-Fixture automatisch (`docker compose up -d`); beim ersten Lauf läuft das Onboarding per Playwright durch (Token in `e2e/.auth.json`). Nützliche Optionen:
+
+- `python -m pytest e2e --teardown`: Container nach dem Lauf stoppen (ohne Flag bleibt er an → schnellere Wiederholung)
+- `$env:HA_PORT=8124; python -m pytest e2e`: anderer Port
+- `$env:HA_IMAGE="ghcr.io/home-assistant/home-assistant:2025.1.0"; python -m pytest e2e`: HA-Version pinnen
+- `$env:HEADLESS=0; python -m pytest e2e`: Browser sichtbar
+
+Getestet wird u.a.: UI-Onboarding & Config Flow, Service-Aufruf (UI/REST/`download`), `devices`-Parameter, und `recorder/import_statistics` → Werte im Bild (Regressionstest für die Energy-Prefs-Formate).
+
+**Ergebnisse**: Generierte Bilder landen nach jedem Lauf in `test-results/` (gitignored) – zum manuellen Prüfen des Renderings. Fehlschlag-Screenshots liegen in `e2e/test-output/`.
+
+**Reset**: `docker compose -f e2e/docker-compose.yaml down -v`, dann `e2e/ha-config` leeren (`configuration.yaml`, `.storage/energy`, `www/.gitkeep` behalten) und `e2e/.auth.json` löschen.
+
+Details: [e2e/README.md](e2e/README.md)
+
 ### Fehlersuche
 
 - **Logs**: Einstellungen → System → Protokolle → nach `energy_post` filtern. Die Integration loggt gefundene Sensoren und berechnete Werte. Ausführlichere Logs über `configuration.yaml`:

@@ -1,0 +1,12 @@
+services:
+  homeassistant:
+    image: ${HA_IMAGE:-ghcr.io/home-assistant/home-assistant:latest}
+    container_name: ha-energy-post-e2e
+    ports:
+      - "${HA_PORT:-8123}:8123"
+    volumes:
+      - ./ha-config:/config
+      - ../custom_components/energy_post:/config/custom_components/energy_post:ro
+    environment:
+      TZ: Europe/Berlin
+    restart: "no"

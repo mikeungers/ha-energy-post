@@ -60,3 +60,21 @@ venv.bak/
 .DS_Store
 Thumbs.db
 test_template_result.png
+
+# e2e test artifacts
+test-results/
+
+# e2e runtime artifacts (keep seeded config, energy prefs and .gitkeep)
+e2e/.auth.json
+e2e/test-output/
+e2e/__pycache__/
+e2e/tests/__pycache__/
+e2e/.pytest_cache/
+e2e/ha-config/**
+!e2e/ha-config/configuration.yaml
+!e2e/ha-config/.storage/
+!e2e/ha-config/.storage/energy
+!e2e/ha-config/www/
+!e2e/ha-config/www/.gitkeep
+!e2e/ha-config/custom_components/
+!e2e/ha-config/custom_components/energy_post/

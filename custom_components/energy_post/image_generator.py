@@ -219,29 +219,43 @@ class EnergyImageGenerator:
                             _LOGGER.info("PV Production: %.2f kWh", value)
                 
                 elif source_type == "grid":
+                    # Support both the unified format (stat_energy_from /
+                    # stat_energy_to directly on the source, current HA
+                    # versions) and the legacy format (flow_from / flow_to
+                    # lists) used before the energy prefs migration.
+                    import_stats = [
+                        flow.get("stat_energy_from")
+                        for flow in source.get("flow_from", [])
+                    ]
+                    if source.get("stat_energy_from"):
+                        import_stats.insert(0, source["stat_energy_from"])
+
+                    export_stats = [
+                        flow.get("stat_energy_to")
+                        for flow in source.get("flow_to", [])
+                    ]
+                    if source.get("stat_energy_to"):
+                        export_stats.insert(0, source["stat_energy_to"])
+
                     # Grid Import
-                    for flow in source.get("flow_from", []):
-                        stat_id = flow.get("stat_energy_from")
-                        if stat_id:
-                            _LOGGER.info("Found grid import sensor: %s", stat_id)
-                            value = await self._get_statistic_sum(
-                                stat_id, start_time, end_time, statistics_during_period
-                            )
-                            if value is not None:
-                                energy_data["grid_import"] += value
-                                _LOGGER.info("Grid Import: %.2f kWh", value)
-                    
+                    for stat_id in filter(None, import_stats):
+                        _LOGGER.info("Found grid import sensor: %s", stat_id)
+                        value = await self._get_statistic_sum(
+                            stat_id, start_time, end_time, statistics_during_period
+                        )
+                        if value is not None:
+                            energy_data["grid_import"] += value
+                            _LOGGER.info("Grid Import: %.2f kWh", value)
+
                     # Grid Export
-                    for flow in source.get("flow_to", []):
-                        stat_id = flow.get("stat_energy_to")
-                        if stat_id:
-                            _LOGGER.info("Found grid export sensor: %s", stat_id)
-                            value = await self._get_statistic_sum(
-                                stat_id, start_time, end_time, statistics_during_period
-                            )
-                            if value is not None:
-                                energy_data["grid_export"] += value
-                                _LOGGER.info("Grid Export: %.2f kWh", value)
+                    for stat_id in filter(None, export_stats):
+                        _LOGGER.info("Found grid export sensor: %s", stat_id)
+                        value = await self._get_statistic_sum(
+                            stat_id, start_time, end_time, statistics_during_period
+                        )
+                        if value is not None:
+                            energy_data["grid_export"] += value
+                            _LOGGER.info("Grid Export: %.2f kWh", value)
                 
             # Consumption berechnen
             energy_data["consumption"] = (

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "minor_version": 3,
+  "key": "energy",
+  "data": {
+    "energy_sources": [
+      {
+        "type": "solar",
+        "stat_energy_from": "e2e:solar"
+      },
+      {
+        "type": "grid",
+        "stat_energy_from": "e2e:grid_import",
+        "stat_energy_to": "e2e:grid_export",
+        "cost_adjustment_day": 0
+      }
+    ],
+    "device_consumption": [],
+    "device_consumption_water": []
+  }
+}
